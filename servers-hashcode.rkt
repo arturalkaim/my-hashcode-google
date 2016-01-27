@@ -1,6 +1,6 @@
 #lang racket
 (define input (list (list 2 5 1 2 5)
-                    (list 0 0)
+                    (list 0 1)
                     (list 3 10) (list 3 10) (list 2 5) (list 1 5) (list 1 1)))
 
 
@@ -113,15 +113,23 @@
     (let ([inc-servs (filter number? (remove-duplicates (vector->list (car row))))])
       (for/fold ([score 0])
                 ([i inc-servs])
-                (+ score (third (list-ref servers i)))
-    )))
+        (+ score (third (list-ref servers i)))
+        )))
   (let ([rows-scores (map eval-row hip)])
     (remove (max (car rows-scores)) rows-scores)))
 
 (define (eval-hips hips servers)
   (for/list ([hip hips])
-       (eval-hip hip servers)))
-       
+            (eval-hip hip servers)))
+
+
+(define (choose-best hips-scores servers num-pools)
+  (let* ([sorted-scores (sort hips-scores < #:key (lambda (x) (car (cdr x))))]
+         [high-score (car (cdr (last sorted-scores)))]
+         [high-score-hips (memf (lambda (x) (eq? (car (cdr x)) high-score)) sorted-scores)])
+    sorted-scores
+    ))
+
 
 (let ([config (first input)]
       [unavailable-slots (get-unavailable-slots input)]
@@ -132,11 +140,9 @@
         [num-pools (fourth config)]
         [num-servers (fifth config)])
     (set! rows (make-rows num-rows num-slots))
-    (displayln servers)
     (mark-unavailable-slots unavailable-slots rows)
     (set! start-rows (make-rows num-rows num-slots))
-    (mark-unavailable-slots unavailable-slots start-rows)
-    (displayln start-rows)    
+    (mark-unavailable-slots unavailable-slots start-rows)   
     (let ([hips (list)]
           [perms (permutations servers)])
       (for ([sorted-servers perms])
@@ -146,9 +152,11 @@
                 (place-server server rows 0))
            (set! hips (append hips (list rows)))
            )
-      (eval-hips hips servers)
-      )
-    ))
+      (let ([scores (eval-hips hips servers)])
+        (let ([hips-scores (for/list ([h hips][s scores])
+                                     (cons h s))])
+          (choose-best hips-scores servers num-pools)  
+          )))))
 
 
 
